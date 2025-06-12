@@ -13,34 +13,74 @@ def edit_text(s :dict):
                 lst.append(i)
     return lst
 
-def generate_description(result) -> str:
-    name = result.get("name", "Пациент")
-    gender = result.get("gender", "мужчина")
-    s = result["random_symptoms"]
-    all_symptoms = edit_text(s)
-    descriptions = []
-    for symptom, description_text in symptoms_description.items():
-        if symptom in all_symptoms:
-            descriptions.append(description_text)
-
-    if len(all_symptoms) > 3:
-        state = "достаточно печально"
-    elif len(all_symptoms) == 0:
-        state = "хорошо"
+def generate_description(result):
+    name = result["name"]
+    gender = result["gender"]
+    
+    # Собираем все симптомы по категориям
+    physical_symptoms = []
+    movement_symptoms = []
+    mental_symptoms = []
+    actual_symptoms = []  # Список реальных симптомов для проверки
+    
+    for part in ["head", "arms", "body", "legs"]:
+        if result["health"][part] == "Больная":
+            part_symptoms = [s for s in symptoms[part] if s.startswith("!")]
+            if part_symptoms:
+                symptom = random.choice(part_symptoms)
+                symptom_name = symptom.split("!")[1]
+                actual_symptoms.append(symptom_name)  # Добавляем симптом в список реальных
+                
+                # Определяем категорию симптома
+                if any(keyword in symptom.lower() for keyword in ["движение", "походка", "шаги", "дрожащие", "судорожные"]):
+                    movement_symptoms.append(symptom)
+                elif any(keyword in symptom.lower() for keyword in ["взгляд", "смех", "голос", "пение", "рычание", "шипение"]):
+                    mental_symptoms.append(symptom)
+                else:
+                    physical_symptoms.append(symptom)
+    
+    # Формируем описание
+    description = ""
+    
+    # Добавляем физические симптомы
+    if physical_symptoms:
+        description += "Физические признаки:"
+        for symptom in physical_symptoms:
+            symptom_name = symptom.split("!")[1]
+            if symptom_name in symptoms_description:
+                description += f"\n- {symptoms_description[symptom_name]}"
+    
+    # Добавляем психические симптомы
+    if mental_symptoms:
+        if description:  # Добавляем пустую строку, если уже есть описание
+            description += "\n"
+        description += "Психические признаки:"
+        for symptom in mental_symptoms:
+            symptom_name = symptom.split("!")[1]
+            if symptom_name in symptoms_description:
+                description += f"\n- {symptoms_description[symptom_name]}"
+    
+    # Добавляем симптомы движений
+    if movement_symptoms:
+        if description:  # Добавляем пустую строку, если уже есть описание
+            description += "\n"
+        description += "Особенности движений:"
+        for symptom in movement_symptoms:
+            symptom_name = symptom.split("!")[1]
+            if symptom_name in symptoms_description:
+                description += f"\n- {symptoms_description[symptom_name]}"
+    
+    # Добавляем заключение
+    total_symptoms = len(physical_symptoms) + len(movement_symptoms) + len(mental_symptoms)
+    if description:  # Добавляем пустую строку перед заключением, если есть описание
+        description += "\n"
+    if total_symptoms >= 3:
+        description += "Ситуация требует внимания."
+    elif total_symptoms == 2:
+        description += "Требуется наблюдение."
+    elif total_symptoms == 1:
+        description += "Состояние в норме."
     else:
-        state = "плохо"
-
-    # Родовая формулировка
-    if gender == "женщина":
-        pronoun = "у неё"
-        feels = "чувствует себя"
-    else:
-        pronoun = "у него"
-        feels = "чувствует себя"
-
-    if len(all_symptoms) == 0:
-        description = f"{name} {feels} {state}. Идеально здорова..." if gender == "женщина" else f"{name} {feels} {state}. Идеально здоров..."
-    else:
-        description = f"{name} {feels} {state}. {pronoun} {', '.join(descriptions)}..."
-
-    return description
+        description += "Внешне выглядит обычным человеком."
+    
+    return description, actual_symptoms  # Возвращаем и описание, и список реальных симптомов

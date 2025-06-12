@@ -33,7 +33,7 @@ def print_header():
     print(f"{Fore.CYAN}👹 ИГНАТУС ПРОЕКТ - ДИАГНОСТИКА ОДЕРЖИМЫХ 👹")
     print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n")
 
-def evaluate_symptoms(shuffled_values: list, real_symptoms: dict, difficulty: str):
+def evaluate_symptoms(shuffled_values: list, real_symptoms: list, difficulty: str):
     """Оценивает симптомы персонажа с учетом сложности."""
     local_score = 0
     max_attempts = 3 if difficulty == "сложный" else 2 if difficulty == "средний" else 1
@@ -84,108 +84,124 @@ def get_player_decision():
 
 def get_difficulty():
     while True:
-        print(f"{Fore.YELLOW}Выберите сложность:")
-        print(f"  1 - Легкий\n  2 - Средний\n  3 - Сложный{Style.RESET_ALL}")
-        difficulty = input("Ваш выбор (1/2/3): ").strip()
-        if difficulty == '1':
-            return "легкий"
-        elif difficulty == '2':
-            return "средний"
-        elif difficulty == '3':
-            return "сложный"
-        else:
-            print(f"{Fore.RED}Пожалуйста, выберите 1, 2 или 3.{Style.RESET_ALL}")
+        try:
+            print(f"{Fore.YELLOW}Выберите сложность:")
+            print(f"  1 - Легкий\n  2 - Средний\n  3 - Сложный{Style.RESET_ALL}")
+            difficulty = input("Ваш выбор (1/2/3): ").strip()
+            if difficulty == '1':
+                return "легкий"
+            elif difficulty == '2':
+                return "средний"
+            elif difficulty == '3':
+                return "сложный"
+            else:
+                print(f"{Fore.RED}Пожалуйста, выберите 1, 2 или 3.{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.RED}Произошла ошибка при выборе сложности. Попробуйте снова.{Style.RESET_ALL}")
+            continue
 
 def start_game():
     """Основной цикл игры."""
-    clear_console()
-    print_header()
-    
-    high_score = load_high_score()
-    print(f"{Fore.MAGENTA}Текущий рекорд: {high_score['score']} очков (день {high_score['day']}){Style.RESET_ALL}\n")
-    
-    difficulty = get_difficulty()
-    current_score = 0
-    day = 1
-    correct_decisions = 0
-    total_decisions = 0
-    
-    while True:
+    try:
         clear_console()
         print_header()
-        print(f"{Fore.CYAN}День {day} | Сложность: {difficulty.capitalize()} | Очки: {current_score}{Style.RESET_ALL}")
-        print(f"{Fore.MAGENTA}Пропускай или убивай.{Style.RESET_ALL}")
-
-        result = constructor(health)
-        description = generate_description(result)
-        is_human = result['is_human']
-
-        print(f"\n{Fore.CYAN}Пациент:{Style.RESET_ALL}")
-        print(result['model'])
-        print(f"\n{Fore.CYAN}Описание:{Style.RESET_ALL}")
-        print(description)
-
-        really_symptoms = result['random_symptoms']
-        real_symptoms = edit_text(really_symptoms)
-        random_symptoms = []
-        cnt = 3
-        while cnt != 0:
-            list_symptoms = random.choice(list(symptoms.values()))
-            random_symptom = random.choice(list_symptoms)
+        
+        high_score = load_high_score()
+        print(f"{Fore.MAGENTA}Текущий рекорд: {high_score['score']} очков (день {high_score['day']}){Style.RESET_ALL}\n")
+        
+        difficulty = get_difficulty()
+        if not difficulty:
+            print(f"{Fore.RED}Не удалось выбрать сложность. Игра завершается.{Style.RESET_ALL}")
+            return
             
-            if random_symptom.startswith("!"):
-                x = random_symptom.split("!")[1]
-                if x not in real_symptoms:
-                    random_symptoms.append(x)
-                    cnt -= 1
-            else:
-                if random_symptom not in real_symptoms:
-                    random_symptoms.append(random_symptom)
-                    cnt -= 1
+        current_score = 0
+        day = 1
+        correct_decisions = 0
+        total_decisions = 0
+        
+        while True:
+            try:
+                clear_console()
+                print_header()
+                print(f"{Fore.CYAN}День {day} | Сложность: {difficulty.capitalize()} | Очки: {current_score}{Style.RESET_ALL}")
+                print(f"{Fore.MAGENTA}Пропускай или убивай.{Style.RESET_ALL}")
 
-        combined_values = real_symptoms + random_symptoms
-        shuffled_values = random.sample(combined_values, len(combined_values))
-        score = evaluate_symptoms(shuffled_values, real_symptoms, difficulty)
-        current_score += score
-        decision = get_player_decision()
-        total_decisions += 1
+                result = constructor(health)
+                description, actual_symptoms = generate_description(result)
+                is_human = result['is_human']
 
-        if decision == '1':  # Пропустить
-            if is_human:
-                print(f"{Fore.GREEN}✓ Человек пропущен.{Style.RESET_ALL}")
-                current_score += 2 if difficulty == "сложный" else 1
-                correct_decisions += 1
-            else:
-                print(f"{Fore.RED}✗ Вы ошиблись, гость проник в больницу!{Style.RESET_ALL}")
-                current_score -= 2 if difficulty == "сложный" else 1
+                print(f"\n{Fore.CYAN}Пациент:{Style.RESET_ALL}")
+                print(result['model'])
+                print(f"\n{Fore.CYAN}Описание:{Style.RESET_ALL}")
+                print(description)
 
-        if decision == '2':  # Убить
-            if not is_human:
-                print(f"{Fore.GREEN}✓ Гость был убит!{Style.RESET_ALL}")
-                current_score += 2 if difficulty == "сложный" else 1
-                correct_decisions += 1
-            else:
-                print(f"{Fore.RED}✗ Вы ошиблись в диагнозе и убили невиновного.{Style.RESET_ALL}")
-                current_score -= 2 if difficulty == "сложный" else 1
+                # Генерируем случайные симптомы, которых нет у персонажа
+                random_symptoms = []
+                cnt = 3
+                while cnt != 0:
+                    list_symptoms = random.choice(list(symptoms.values()))
+                    random_symptom = random.choice(list_symptoms)
+                    
+                    if random_symptom.startswith("!"):
+                        x = random_symptom[1:]
+                        if x not in actual_symptoms:
+                            random_symptoms.append(x)
+                            cnt -= 1
+                    else:
+                        if random_symptom not in actual_symptoms:
+                            random_symptoms.append(random_symptom)
+                            cnt -= 1
 
-        if day % 7 == 0:
-            accuracy = (correct_decisions / total_decisions) * 100
-            print(f"\n{Fore.CYAN}=== Недельный отчет ===")
-            print(f"Баллы Игната Минибро: {current_score}")
-            print(f"Точность диагнозов: {accuracy:.1f}%")
-            print(f"Правильных решений: {correct_decisions} из {total_decisions}{Style.RESET_ALL}")
+                combined_values = actual_symptoms + random_symptoms
+                shuffled_values = random.sample(combined_values, len(combined_values))
+                score = evaluate_symptoms(shuffled_values, actual_symptoms, difficulty)
+                current_score += score
+                decision = get_player_decision()
+                total_decisions += 1
 
-            if current_score > high_score['score']:
-                print(f"\n{Fore.GREEN}🎉 Новый рекорд! 🎉{Style.RESET_ALL}")
-                save_high_score(current_score, day)
-                high_score = {"score": current_score, "day": day}
+                if decision == '1':  # Пропустить
+                    if is_human:
+                        print(f"{Fore.GREEN}✓ Человек пропущен.{Style.RESET_ALL}")
+                        current_score += 2 if difficulty == "сложный" else 1
+                        correct_decisions += 1
+                    else:
+                        print(f"{Fore.RED}✗ Вы ошиблись, демон проник в больницу!{Style.RESET_ALL}")
+                        current_score -= 2 if difficulty == "сложный" else 1
 
-        if input(f"\n{Fore.YELLOW}Продолжить? (1 - Да / 2 - Нет): {Style.RESET_ALL}").strip() == '2':
-            print(f"\n{Fore.CYAN}=== Итоги игры ===")
-            print(f"Баллы Игната Минибро: {current_score}")
-            print(f"Точность диагнозов: {(correct_decisions / total_decisions) * 100:.1f}%")
-            print(f"Правильных решений: {correct_decisions} из {total_decisions}")
-            print(f"Лучший результат: {high_score['score']} очков (день {high_score['day']}){Style.RESET_ALL}")
-            break
+                if decision == '2':  # Убить
+                    if not is_human:
+                        print(f"{Fore.GREEN}✓ Демон был уничтожен!{Style.RESET_ALL}")
+                        current_score += 2 if difficulty == "сложный" else 1
+                        correct_decisions += 1
+                    else:
+                        print(f"{Fore.RED}✗ Вы ошиблись в диагнозе и убили невиновного.{Style.RESET_ALL}")
+                        current_score -= 2 if difficulty == "сложный" else 1
 
-        day += 1
+                if day % 7 == 0:
+                    accuracy = (correct_decisions / total_decisions) * 100
+                    print(f"\n{Fore.CYAN}=== Недельный отчет ===")
+                    print(f"Баллы Игната Минибро: {current_score}")
+                    print(f"Точность диагнозов: {accuracy:.1f}%")
+                    print(f"Правильных решений: {correct_decisions} из {total_decisions}{Style.RESET_ALL}")
+
+                    if current_score > high_score['score']:
+                        print(f"\n{Fore.GREEN}🎉 Новый рекорд! 🎉{Style.RESET_ALL}")
+                        save_high_score(current_score, day)
+                        high_score = {"score": current_score, "day": day}
+
+                if input(f"\n{Fore.YELLOW}Продолжить? (1 - Да / 2 - Нет): {Style.RESET_ALL}").strip() == '2':
+                    print(f"\n{Fore.CYAN}=== Итоги игры ===")
+                    print(f"Баллы Игната Минибро: {current_score}")
+                    print(f"Точность диагнозов: {(correct_decisions / total_decisions) * 100:.1f}%")
+                    print(f"Правильных решений: {correct_decisions} из {total_decisions}")
+                    print(f"Лучший результат: {high_score['score']} очков (день {high_score['day']}){Style.RESET_ALL}")
+                    break
+
+                day += 1
+            except Exception as e:
+                print(f"{Fore.RED}Произошла ошибка во время игры: {str(e)}{Style.RESET_ALL}")
+                if input(f"\n{Fore.YELLOW}Продолжить игру? (1 - Да / 2 - Нет): {Style.RESET_ALL}").strip() == '2':
+                    break
+    except Exception as e:
+        print(f"{Fore.RED}Критическая ошибка: {str(e)}{Style.RESET_ALL}")
+        input("Нажмите Enter для выхода...")
