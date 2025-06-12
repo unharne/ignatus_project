@@ -1,8 +1,15 @@
 import random
 from colorama import Fore, Style
-from data import symptoms
+from data import symptoms, male_names, female_names, health
 
 def constructor(health: dict) -> dict:
+    # Выбор пола
+    gender = random.choice(['мужчина', 'женщина'])
+    if gender == 'мужчина':
+        name = random.choice(male_names)
+    else:
+        name = random.choice(female_names)
+
     random_health = {key: random.choice(values) for key, values in health.items()}
     health = random_health
 
@@ -16,6 +23,8 @@ def constructor(health: dict) -> dict:
         {arms}  /|\\  {Style.RESET_ALL}
         {body}   |    {Style.RESET_ALL}
         {legs}  / \\  {Style.RESET_ALL}
+        Имя: {name}
+        Пол: {gender.capitalize()}
         """
     
     random_symptoms = {}
@@ -35,6 +44,8 @@ def constructor(health: dict) -> dict:
         model=model,
         random_symptoms=random_symptoms,
         is_human=is_human,
-        )
+        gender=gender,
+        name=name
+    )
 
     return result
